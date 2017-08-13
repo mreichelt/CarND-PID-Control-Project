@@ -3,9 +3,13 @@
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
+#include <stdexcept>
+#include <string>
 
 // for convenience
+double EPSILON = 0.0000000000000000001;
 using json = nlohmann::json;
+using namespace std;
 
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
@@ -29,11 +33,43 @@ std::string hasData(std::string s) {
     return "";
 }
 
+bool AreSame(double a, double b) {
+    return fabs(a - b) < EPSILON;
+}
+
+// TODO: move poor man's test suite to fully-blown one (like Boost Test or Google C++ Test Lib)
+int test() {
+    PID pid;
+
+    if (pid.twiddle_index != 0) throw runtime_error("1");
+    if (pid.mode != twiddle_increase) throw runtime_error("2");
+
+    pid.mode = twiddle_decrease;
+    pid.moveToNextTwiddle();
+
+    if (pid.twiddle_index != 1) throw runtime_error("1");
+    if (pid.mode != twiddle_increase) throw runtime_error("2");
+
+    pid = PID();
+    if (!AreSame(1.0, pid.p_error)) throw runtime_error("should be 1");
+    pid.getErrorRef(0) = 42.0;
+    if (!AreSame(42.0, pid.p_error)) throw runtime_error("should be 42");
+
+    pid = PID();
+    if (!AreSame(0.0, pid.Kp)) throw runtime_error("should be 0");
+    pid.getParamRef(0) = 2.0;
+    if (!AreSame(2.0, pid.Kp)) throw runtime_error("should be 2");
+
+    cout << "All OK" << endl;
+}
+
 int main() {
+//    return test();
+
     uWS::Hub h;
 
     PID pid;
-    // TODO: Initialize the pid variable.
+    // TODO: init with different values than zeros?
 
     h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
         // "42" at the start of the message means there's a websocket message event.
@@ -47,18 +83,25 @@ int main() {
                 if (event == "telemetry") {
                     // j[1] is the data JSON object
                     double cte = std::stod(j[1]["cte"].get<std::string>());
-                    double speed = std::stod(j[1]["speed"].get<std::string>());
-                    double angle = std::stod(j[1]["steering_angle"].get<std::string>());
-                    double steer_value;
-                    /*
-                    * TODO: Calcuate steering value here, remember the steering value is
-                    * [-1, 1].
-                    * NOTE: Feel free to play around with the throttle and speed. Maybe use
-                    * another PID controller to control the speed!
-                    */
+                    // TODO: maybe use these
+                    //double speed = std::stod(j[1]["speed"].get<std::string>());
+                    //double angle = std::stod(j[1]["steering_angle"].get<std::string>());
+
+                    double steer_value = pid.GetValue(cte);
+                    pid.UpdateError(cte);
 
                     // DEBUG
-                    std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+                    std::cout << "CTE: " << cte
+                              << " Steering Value: " << steer_value
+                              << " Total error: " << pid.TotalError()
+                              << std::endl;
+
+                    // steering values must be in range [-1, 1]
+                    if (steer_value < -1) {
+                        steer_value = -1;
+                    } else if (steer_value > 1) {
+                        steer_value = 1;
+                    }
 
                     json msgJson;
                     msgJson["steering_angle"] = steer_value;
