@@ -20,28 +20,21 @@ public:
     /*
     * Errors
     */
-    double p_error{numeric_limits<double>::max()};
-    double i_error{numeric_limits<double>::max()};
-    double d_error{numeric_limits<double>::max()};
+    double p_error{0};
+    double i_error{0};
+    double d_error{0};
 
-    /*
-    * Coefficients
-    */
-    double Kp{0};
-    double Ki{0};
-    double Kd{0};
-
+    /**
+     * Kp Ki Kd
+     */
+    double K[3] = {0, 0, 0};
     double dp[3] = {0.1, 0.00001, 0.1};
 
-    double cte{0};
-    double int_cte{0};
-
-
     double twiddle_cte = 0;
-
     bool twiddle_active = false;
     deque<twiddle_operation> twiddle_operations;
     unsigned int twiddle_index = 0;
+    double best_error = numeric_limits<double>::max();
 
     PID(double Kp, double Ki, double Kd, bool twiddle_active);
 
@@ -57,9 +50,11 @@ public:
     */
     double TotalError();
 
-    double &getParamRef(unsigned int index);
+    double Kp();
 
-    double &getErrorRef(unsigned int index);
+    double Ki();
+
+    double Kd();
 
 };
 

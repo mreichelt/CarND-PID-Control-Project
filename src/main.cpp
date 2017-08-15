@@ -44,14 +44,14 @@ int main() {
 //    PID pid = PID(0.2, 0, 0, false);
 
     // PD controller: better, but still oscillates - should still have bias, but it is able to complete a track
-//    PID pid = PID(0.2, 0, 0.2, false);
+//    PID pid = PID(0.2, 0, 3, false);
 
     // use full PID controller - this time we activate twiddling so we can tune the parameters (Ki term is created
     // on demand)
-//    PID pid = PID(0.2, 0, 0.2, true);
+    PID pid = PID(0.2, 0, 3, true);
 
     // output from Twiddle run
-    PID pid = PID(0.612625, 2.52657e-05, 0.652344, false);
+//    PID pid = PID(0.612625, 2.52657e-05, 0.652344, false);
 
 
     h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
@@ -70,9 +70,11 @@ int main() {
                     // TODO: maybe use these
                     //double angle = std::stod(j[1]["steering_angle"].get<std::string>());
 
-                    double diff_cte = (cte - pid.cte) * speed;
-                    double steer_value = -(pid.Kp * cte + pid.Ki * pid.int_cte + pid.Kd * diff_cte);
                     pid.UpdateError(cte);
+                    double steer_value =
+                            -pid.Kp() * pid.p_error
+                            - pid.Ki() * pid.i_error
+                            - pid.Kd() * pid.d_error;
 
                     // DEBUG
                     cout << "CTE: " << cte
@@ -80,9 +82,9 @@ int main() {
                          << " Total error: " << pid.TotalError()
                          << endl;
 
-                    cout << "params: Kp=" << pid.Kp
-                         << ", Ki=" << pid.Ki
-                         << ", Kd=" << pid.Kd
+                    cout << "params: Kp=" << pid.Kp()
+                         << ", Ki=" << pid.Ki()
+                         << ", Kd=" << pid.Kd()
                          << endl << endl;
 
                     // steering values must be in range [-1, 1]

@@ -12,11 +12,13 @@ using namespace std;
 PID::~PID() = default;
 
 void PID::UpdateError(double cte) {
-    this->cte = cte;
-    int_cte += cte;
+    d_error = cte - p_error;
+    p_error = cte;
+    i_error += cte;
 
-    double &param = getParamRef(twiddle_index);
-    double &error = getErrorRef(twiddle_index);
+    // get currently active twiddle values as refs so we can update them easily :)
+    double &current_k = K[twiddle_index];
+    double &current_dp = dp[twiddle_index];
 
     if (twiddle_active) {
 
@@ -24,7 +26,7 @@ void PID::UpdateError(double cte) {
             cout << "------ starting update of parameter " + to_string(twiddle_index) << endl;
             // time to start a new update!
             twiddle_cte = 0;
-            param += dp[twiddle_index];
+            current_k += current_dp;
             for (int i = 0; i < TWIDDLE_STEPS_TO_COLLECT; i++) {
                 twiddle_operations.push_back(twiddle_collect);
             }
@@ -47,12 +49,12 @@ void PID::UpdateError(double cte) {
 
             case twiddle_decide_if_increase_was_good:
                 current_error = twiddle_cte / TWIDDLE_STEPS_TO_COLLECT;
-                if (current_error < error) {
-                    error = current_error;
-                    dp[twiddle_index] *= 1.1;
+                if (current_error < best_error) {
+                    best_error = current_error;
+                    current_dp *= 1.1;
                     twiddle_index = (twiddle_index + 1) % 3;
                 } else {
-                    param -= 2 * dp[twiddle_index];
+                    current_k -= 2 * current_dp;
                     twiddle_cte = 0;
                     for (int i = 0; i < TWIDDLE_STEPS_TO_COLLECT; i++) {
                         twiddle_operations.push_back(twiddle_collect);
@@ -63,12 +65,12 @@ void PID::UpdateError(double cte) {
 
             case twiddle_decide_if_decrease_was_good:
                 current_error = twiddle_cte / TWIDDLE_STEPS_TO_COLLECT;
-                if (current_error < error) {
-                    error = current_error;
-                    dp[twiddle_index] *= 1.1;
+                if (current_error < best_error) {
+                    best_error = current_error;
+                    current_dp *= 1.1;
                 } else {
-                    param += dp[twiddle_index];
-                    dp[twiddle_index] *= 0.9;
+                    current_k += current_dp;
+                    current_dp *= 0.9;
                 }
                 twiddle_index = (twiddle_index + 1) % 3;
                 break;
@@ -80,24 +82,25 @@ void PID::UpdateError(double cte) {
 }
 
 double PID::TotalError() {
-    return p_error + i_error + d_error;
+    return best_error;
 }
 
-double &PID::getParamRef(unsigned int i) {
-    if (i > 2) throw runtime_error("i too large");
-    double *paramPointers[] = {&Kp, &Ki, &Kd};
-    return *(paramPointers[i]);
+double PID::Kp() {
+    return K[0];
 }
 
-
-double &PID::getErrorRef(unsigned int i) {
-    if (i > 2) throw runtime_error("i too large");
-    double *errorPointers[] = {&p_error, &i_error, &d_error};
-    return *(errorPointers[i]);
+double PID::Ki() {
+    return K[1];
 }
 
-PID::PID(double Kp, double Ki, double Kd, bool twiddle_active)
-        : Kp(Kp), Ki(Ki), Kd(Kd), twiddle_active(twiddle_active) {
+double PID::Kd() {
+    return K[2];
+}
+
+PID::PID(double Kp, double Ki, double Kd, bool twiddle_active) : twiddle_active(twiddle_active) {
+    K[0] = Kp;
+    K[1] = Ki;
+    K[2] = Kd;
     for (int i = 0; i < TWIDDLE_IGNORE_AT_START; i++) {
         twiddle_operations.push_back(twiddle_ignore);
     }
