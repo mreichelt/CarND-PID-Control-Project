@@ -37,39 +37,19 @@ bool AreSame(double a, double b) {
     return fabs(a - b) < EPSILON;
 }
 
-// TODO: move poor man's test suite to fully-blown one (like Boost Test or Google C++ Test Lib)
-int test() {
-    PID pid;
-
-    if (pid.twiddle_index != 0) throw runtime_error("1");
-    if (pid.mode != twiddle_increase) throw runtime_error("2");
-
-    pid.mode = twiddle_decrease;
-    pid.moveToNextTwiddle();
-
-    if (pid.twiddle_index != 1) throw runtime_error("1");
-    if (pid.mode != twiddle_increase) throw runtime_error("2");
-
-    pid = PID();
-    if (!AreSame(1.0, pid.p_error)) throw runtime_error("should be 1");
-    pid.getErrorRef(0) = 42.0;
-    if (!AreSame(42.0, pid.p_error)) throw runtime_error("should be 42");
-
-    pid = PID();
-    if (!AreSame(0.0, pid.Kp)) throw runtime_error("should be 0");
-    pid.getParamRef(0) = 2.0;
-    if (!AreSame(2.0, pid.Kp)) throw runtime_error("should be 2");
-
-    cout << "All OK" << endl;
-}
-
 int main() {
-//    return test();
-
     uWS::Hub h;
 
-    PID pid;
-    // TODO: init with different values than zeros?
+    // P controller: oscillates heavily, drives out of track quickly
+//    PID pid = PID(0.2, 0, 0, false);
+
+    // PD controller: better, but still oscillates - should still have bias, but it is able to complete a track
+//    PID pid = PID(0.2, 0, 0.2, false);
+
+    // use full PID controller - this time we activate twiddling so we can tune the parameters (Ki term is created
+    // on demand)
+    PID pid = PID(0.2, 0, 0.2, true);
+
 
     h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
         // "42" at the start of the message means there's a websocket message event.
@@ -83,18 +63,24 @@ int main() {
                 if (event == "telemetry") {
                     // j[1] is the data JSON object
                     double cte = std::stod(j[1]["cte"].get<std::string>());
+                    double speed = std::stod(j[1]["speed"].get<std::string>());
                     // TODO: maybe use these
-                    //double speed = std::stod(j[1]["speed"].get<std::string>());
                     //double angle = std::stod(j[1]["steering_angle"].get<std::string>());
 
-                    double steer_value = pid.GetValue(cte);
+                    double diff_cte = (cte - pid.cte) * speed;
+                    double steer_value = -(pid.Kp * cte + pid.Ki * pid.int_cte + pid.Kd * diff_cte);
                     pid.UpdateError(cte);
 
                     // DEBUG
-                    std::cout << "CTE: " << cte
-                              << " Steering Value: " << steer_value
-                              << " Total error: " << pid.TotalError()
-                              << std::endl;
+                    cout << "CTE: " << cte
+                         << " Steering Value: " << steer_value
+                         << " Total error: " << pid.TotalError()
+                         << endl;
+
+                    cout << "params: Kp=" << pid.Kp
+                         << ", Ki=" << pid.Ki
+                         << ", Kd=" << pid.Kd
+                         << endl << endl;
 
                     // steering values must be in range [-1, 1]
                     if (steer_value < -1) {
@@ -107,7 +93,7 @@ int main() {
                     msgJson["steering_angle"] = steer_value;
                     msgJson["throttle"] = 0.3;
                     auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-                    std::cout << msg << std::endl;
+//                    std::cout << msg << std::endl;
                     ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
                 }
             } else {

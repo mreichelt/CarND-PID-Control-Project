@@ -1,9 +1,18 @@
 #ifndef PID_H
 #define PID_H
 
-enum twiddle_mode {
-    twiddle_increase,
-    twiddle_decrease
+#include <limits>
+#include <functional>
+#include <vector>
+#include <deque>
+
+using namespace std;
+
+enum twiddle_operation {
+    twiddle_ignore,
+    twiddle_collect,
+    twiddle_decide_if_increase_was_good,
+    twiddle_decide_if_decrease_was_good
 };
 
 class PID {
@@ -11,37 +20,33 @@ public:
     /*
     * Errors
     */
-    double p_error{1};
-    double i_error{1};
-    double d_error{1};
+    double p_error{0};
+    double i_error{0};
+    double d_error{0};
 
     /*
     * Coefficients
     */
-    double Kp{0};
-    double Ki{0};
-    double Kd{0};
+    double Kp{0.1};
+    double Ki{0.1};
+    double Kd{0.1};
 
+    double dp[3] = {0.1, 0.00001, 0.1};
+
+    double best_cte{numeric_limits<double>::max()};
     double cte{0};
     double int_cte{0};
 
+
+    double twiddle_cte = 0;
+
+    bool twiddle_active = false;
+    deque<twiddle_operation> twiddle_operations;
     unsigned int twiddle_index = 0;
-    twiddle_mode mode = twiddle_increase;
 
-    /*
-    * Constructor
-    */
-    PID();
+    PID(double Kp, double Ki, double Kd, bool twiddle_active);
 
-    /*
-    * Destructor.
-    */
     virtual ~PID();
-
-    /*
-    * Initialize PID.
-    */
-    void Init(double Kp, double Ki, double Kd);
 
     /*
     * Update the PID error variables given cross track error.
@@ -53,13 +58,10 @@ public:
     */
     double TotalError();
 
-    double GetValue(double cte);
+    double &getParamRef(unsigned int index);
 
-    double& getParamRef(unsigned int index);
+    double &getErrorRef(unsigned int index);
 
-    double& getErrorRef(unsigned int index);
-
-    void moveToNextTwiddle();
 };
 
 #endif /* PID_H */
