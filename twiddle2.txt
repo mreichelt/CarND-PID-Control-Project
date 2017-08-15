@@ -1,0 +1,11 @@
+CTE: 0.6259 Steering Value: -0.0666133 Total error: 0.0255723
+params: Kp=0.294775, Ki=-3.43368e-06, Kd=3.55764,    sum(dp)=0.0279664
+
+------ DECIDE: decrease of 1 was bad
+CTE: 0.6194 Steering Value: -0.159459 Total error: 0.0255723
+params: Kp=0.294775, Ki=0, Kd=3.55764,    sum(dp)=0.027966
+
+------ starting update of parameter 2
+ignore
+CTE: 0.6119 Steering Value: -0.15355 Total error: 0.0255723
+params: Kp=0.294775, Ki=0, Kd=3.57637,    sum(dp)=0.027966

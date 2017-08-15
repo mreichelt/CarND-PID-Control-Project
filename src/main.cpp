@@ -48,10 +48,15 @@ int main() {
 
     // use full PID controller - this time we activate twiddling so we can tune the parameters (Ki term is created
     // on demand)
-    PID pid = PID(0.2, 0, 3, true);
+//    PID pid = PID(0.2, 0, 3, true);
 
-    // output from Twiddle run
-//    PID pid = PID(0.612625, 2.52657e-05, 0.652344, false);
+    // output from a very long Twiddle run with best error = 0.0255723
+    //   -> Ki=0 and only train P and D
+//    PID pid = PID(0.294775, 0, 3.55764, true, true, false, true);
+
+
+    // final params :)
+    PID pid = PID(0.315775, 0, 3.54665, false);
 
 
     h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
@@ -66,8 +71,8 @@ int main() {
                 if (event == "telemetry") {
                     // j[1] is the data JSON object
                     double cte = std::stod(j[1]["cte"].get<std::string>());
-                    double speed = std::stod(j[1]["speed"].get<std::string>());
                     // TODO: maybe use these
+//                    double speed = std::stod(j[1]["speed"].get<std::string>());
                     //double angle = std::stod(j[1]["steering_angle"].get<std::string>());
 
                     pid.UpdateError(cte);
@@ -85,6 +90,8 @@ int main() {
                     cout << "params: Kp=" << pid.Kp()
                          << ", Ki=" << pid.Ki()
                          << ", Kd=" << pid.Kd()
+                         << ",   sum(dp)=" << (pid.dp[0] + pid.dp[1] + pid.dp[2])
+                         << ", dp[] = " << pid.dp[0] << ", " << pid.dp[1] << ", " << pid.dp[2]
                          << endl << endl;
 
                     // steering values must be in range [-1, 1]
