@@ -20,20 +20,19 @@ public:
     /*
     * Errors
     */
-    double p_error{0};
-    double i_error{0};
-    double d_error{0};
+    double p_error{numeric_limits<double>::max()};
+    double i_error{numeric_limits<double>::max()};
+    double d_error{numeric_limits<double>::max()};
 
     /*
     * Coefficients
     */
-    double Kp{0.1};
-    double Ki{0.1};
-    double Kd{0.1};
+    double Kp{0};
+    double Ki{0};
+    double Kd{0};
 
     double dp[3] = {0.1, 0.00001, 0.1};
 
-    double best_cte{numeric_limits<double>::max()};
     double cte{0};
     double int_cte{0};
 

@@ -48,7 +48,10 @@ int main() {
 
     // use full PID controller - this time we activate twiddling so we can tune the parameters (Ki term is created
     // on demand)
-    PID pid = PID(0.2, 0, 0.2, true);
+//    PID pid = PID(0.2, 0, 0.2, true);
+
+    // output from Twiddle run
+    PID pid = PID(0.612625, 2.52657e-05, 0.652344, false);
 
 
     h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
